@@ -42,7 +42,7 @@ PlugAPI.getAuth({
 	bot.multiLine = true;
 	bot.multiLineLimit = 5;
 	
-	setTimeout( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
+	setInterval( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
 	
 	// Not sure if these will ever be useful, but they are arrays that will hold UserIDs of the different Moderator types
 	var resident_djs = new Array();
