@@ -1,0 +1,29 @@
+{
+  "name": "plug-dj-login",
+  "version": "0.0.0",
+  "description": "Log in to Plug.dj and get an auth cookie",
+  "main": "index.js",
+  "scripts": {
+    "example": "node example/index.js"
+  },
+  "keywords": [
+    "plug.dj"
+  ],
+  "author": "David Guttman",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "~0.12.4",
+    "request": "~2.27.0"
+  },
+  "directories": {
+    "example": "example"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/davidguttman/plug-dj-login.git"
+  },
+  "bugs": {
+    "url": "https://github.com/davidguttman/plug-dj-login/issues"
+  },
+  "homepage": "https://github.com/davidguttman/plug-dj-login"
+}
