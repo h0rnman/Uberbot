@@ -9,4 +9,5 @@ module.exports = {
 	, autoWootDelay : 10
 	, pingGreeting : true
 	, refreshDelay : 300
+	, aiRefreshDelay : 300
 }

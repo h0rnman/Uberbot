@@ -1,13 +1,18 @@
+// Node-specific requires:
+var fs = require('fs');
+
 var PlugAPI = require('./plugapi');
 var CONFIG = require('./config.js');
+
 var ROOM = CONFIG.room;
 var UPDATECODE;
 var COMMAND_PREFIX = CONFIG.commandPrefix;
 
 
-// Load the AI files.  Right now they are physical files, but could eventually be moved to a DB
-var random_number_ai = require('./ai/randomnumber.js');
-var bad_command_ai = require('./ai/unknowncommand.js');
+// Create AI objects. These will be loaded later by buildAI() to help with AI reloading
+var random_number_ai;
+var bad_command_ai;
+
 var hasVoted = false;
 var currentDJ;
 
@@ -36,13 +41,15 @@ PlugAPI.getAuth({
 	// Set up the bot
 	var bot = new PlugAPI(auth, UPDATECODE);
 	var RECONNECT = function() {bot.connect(ROOM);};
+	buildAI();
 	
 	bot.on('close', RECONNECT);
 	bot.on('error', RECONNECT);
 	bot.multiLine = true;
 	bot.multiLineLimit = 5;
 	
-	setInterval( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
+	setTimeout( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
+	setTimeout( function() {refreshAI();}, CONFIG.aiRefreshDelay * 1000);
 	
 	// Not sure if these will ever be useful, but they are arrays that will hold UserIDs of the different Moderator types
 	var resident_djs = new Array();
@@ -125,7 +132,7 @@ PlugAPI.getAuth({
 						break;
 					case 'reload':
 						if (data.fromID == '50aeaedd3e083e18fa2d01be')
-							refreshConfig();
+							refreshAI();
 						break;
 					case ' ':
 					case '':
@@ -192,10 +199,27 @@ PlugAPI.getAuth({
 		
 	}
 	
-	function refreshConfig()
-	{
+	function refreshConfig()	{
 		delete require.cache[require.resolve('./config.js')]
 		CONFIG = require('./config.js');
+	}
+	
+	function refreshAI()	{
+		fs.readdir("./ai", function(err, files)	{
+			if (files != 'undefined')	{
+				for (var i in files)	{
+					console.log("Reloading AI file: " + files[i]);
+					delete require.cache[require.resolve('./ai/'+files[i])]
+				}
+				buildAI();
+			}
+		
+		});
+	}
+	
+	function buildAI()	{
+		random_number_ai = require('./ai/randomnumber.js');
+		bad_command_ai = require('./ai/unknowncommand.js');
 	}
 	
 	function delayedMessage(message, delay)	{
