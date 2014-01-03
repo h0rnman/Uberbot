@@ -15,7 +15,8 @@ var bad_command_ai;
 
 var hasVoted = false;
 var currentDJ;
-
+var PlugRoom = null;
+var Suspend_Queue = null;
 
 //  Do some fuckery with Twitter Auth strings to get the AuthCode AND the UPDATECODE.
 //  Note that if UPDATECODE is wrong, the bot will stop talking to the room.
@@ -48,8 +49,8 @@ PlugAPI.getAuth({
 	bot.multiLine = true;
 	bot.multiLineLimit = 5;
 	
-	setTimeout( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
-	setTimeout( function() {refreshAI();}, CONFIG.aiRefreshDelay * 1000);
+	setInterval( function() {refreshConfig();}, CONFIG.refreshDelay * 1000);
+	setInterval( function() {refreshAI();}, CONFIG.aiRefreshDelay * 1000);
 	
 	// Not sure if these will ever be useful, but they are arrays that will hold UserIDs of the different Moderator types
 	var resident_djs = new Array();
@@ -72,6 +73,7 @@ PlugAPI.getAuth({
 		console.log("Self woot is " + CONFIG.selfProps.toString());
 		staff=data.room.staff;
 		currentDJ = data.room.currentDJ;
+		PlugRoom = data;
 		
 		for (var key in staff)
 			{
@@ -130,9 +132,19 @@ PlugAPI.getAuth({
 					case 'props':	
 						giveProps(data.fromID);
 						break;
+					case 'info':
+						if (data.fromID == '50aeaedd3e083e18fa2d01be')	{
+						
+							console.log("Roomscore: " + JSON.stringify(bot.getRoomScore()));
+							console.log("Waitlist: " + JSON.stringify(bot.getWaitList()));
+						
+						}
 					case 'reload':
 						if (data.fromID == '50aeaedd3e083e18fa2d01be')
-							refreshAI();
+							canUseCommand(1,1);
+						break;
+					case 'suspend':
+					//  TODO: Implement this
 						break;
 					case ' ':
 					case '':
@@ -141,7 +153,7 @@ PlugAPI.getAuth({
 						// I implemented the logic for this in the external file as an exported function rather than a variable list. It was the best way to be able to parse the command word
 						// to provide a more "intelligent" response.  It might be worthwhile to implement all AI responses in separate files, but it's more of a consistency issue than a
 						// performance issue.
-						var ai_text = bad_command_ai.phrase(command);
+						var ai_text = bad_command_ai.phrase(command, parameters, data.from, data.fromID);
 						bot.chat(ai_text);
 						break;
 				};
@@ -151,7 +163,7 @@ PlugAPI.getAuth({
 	
 	bot.on('userJoin', function (data)	{
 	
-	if (data.username != 'Mv203')
+	if (data.username != 'Marvin-Uberbot')
 		delayedMessage("Greetings, " + (CONFIG.pingGreeting ? "@" : "") + data.username + ".  Welcome to the FunHouse!", 5);
 	
 	});
@@ -163,6 +175,7 @@ PlugAPI.getAuth({
 			currentDJ = data.currentDJ;
 			bot.chat('/me ' + bot.getUser(data.currentDJ).username + " is now playing: " + data.media.title + " by " + data.media.author + ".");
 			console.log("Song: " + data.media.title + " by " + data.media.author);
+			console.log("Title: " + data.media.title + "   id: " + data.media.cid + " format_ID: " + data.media.id);
 			
 			if (CONFIG.autoWoot)	{
 				setTimeout( function() {bot.woot();}, CONFIG.autoWootDelay * 1000);
@@ -200,6 +213,7 @@ PlugAPI.getAuth({
 	}
 	
 	function refreshConfig()	{
+		console.log("Reloading config.js. Current refresh interval is: " + CONFIG.refreshDelay.toString() + " seconds.");
 		delete require.cache[require.resolve('./config.js')]
 		CONFIG = require('./config.js');
 	}
@@ -208,7 +222,7 @@ PlugAPI.getAuth({
 		fs.readdir("./ai", function(err, files)	{
 			if (files != 'undefined')	{
 				for (var i in files)	{
-					console.log("Reloading AI file: " + files[i]);
+					console.log("Reloading AI file: " + files[i] + ".  Current refresh interval is: " + CONFIG.aiRefreshDelay.toString() + " seconds.");
 					delete require.cache[require.resolve('./ai/'+files[i])]
 				}
 				buildAI();
@@ -321,6 +335,16 @@ PlugAPI.getAuth({
 	else if (roll.indexOf(command) > -1) return "roll";
 	else if (props.indexOf(command) > -1) return "props";
 	else return command;
+	
+	}
+	
+	function canUseCommand(command, userid)	{
+	
+		//  map alias to allowed users
+		console.log("Audience: " + JSON.stringify(bot.getAudience()));
+		console.log("DJs: " + JSON.stringify(bot.getDJs()));
+		console.log("Users: " + JSON.stringify(bot.getUsers()));
+		console.log("Staff: " + JSON.stringify(bot.getStaff()));
 	
 	}
 	
