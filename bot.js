@@ -12,6 +12,7 @@ var COMMAND_PREFIX = CONFIG.commandPrefix;
 // Create AI objects. These will be loaded later by buildAI() to help with AI reloading
 var random_number_ai;
 var bad_command_ai;
+var props_aliases;
 
 var hasVoted = false;
 var currentDJ;
@@ -234,6 +235,7 @@ PlugAPI.getAuth({
 	function buildAI()	{
 		random_number_ai = require('./ai/randomnumber.js');
 		bad_command_ai = require('./ai/unknowncommand.js');
+		props_aliases = require('./ai/propsaliases.js');
 	}
 	
 	function delayedMessage(message, delay)	{
@@ -329,11 +331,10 @@ PlugAPI.getAuth({
 	
 	var speak = new Array("speak","holla","talk","bark");
 	var roll = new Array("roll","dice","random");
-	var props = new Array("props","woot","upvote","dance","boogie");
 	
 	if (speak.indexOf(command) > -1) return "speak";
 	else if (roll.indexOf(command) > -1) return "roll";
-	else if (props.indexOf(command) > -1) return "props";
+	else if (props_aliases.indexOf(command) > -1) return "props";
 	else return command;
 	
 	}
