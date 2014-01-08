@@ -1,21 +1,25 @@
-// Node-specific requires:
+// Node-specific requires and CONSTS:
 var fs = require('fs');
 
+// Bot-specific requires and CONSTS:
 var PlugAPI = require('./plugapi');
 var CONFIG = require('./config.js');
 
 var ROOM = CONFIG.room;
-var UPDATECODE;
+var UPDATECODE = null;
 var COMMAND_PREFIX = CONFIG.commandPrefix;
 
 
 // Create AI objects. These will be loaded later by buildAI() to help with AI reloading
-var random_number_ai;
-var bad_command_ai;
-var props_aliases;
+var random_number_ai = null;
+var bad_command_ai = null;
+var eightball_ai = null;
+var props_aliases = null;
+var roll_aliases = null;
+var eightball_aliases;
 
 var hasVoted = false;
-var currentDJ;
+var currentDJ = null;
 var PlugRoom = null;
 var Suspend_Queue = null;
 
@@ -147,13 +151,16 @@ PlugAPI.getAuth({
 					case 'suspend':
 					//  TODO: Implement this
 						break;
+					case 'help':
+						getHelp(parameters);
+						break;
+					case '8ball':
+						eightBall(command, parameters, data.from, data.fromID);
+						break;
 					case ' ':
 					case '':
 						break;
 					default:
-						// I implemented the logic for this in the external file as an exported function rather than a variable list. It was the best way to be able to parse the command word
-						// to provide a more "intelligent" response.  It might be worthwhile to implement all AI responses in separate files, but it's more of a consistency issue than a
-						// performance issue.
 						var ai_text = bad_command_ai.phrase(command, parameters, data.from, data.fromID);
 						bot.chat(ai_text);
 						break;
@@ -233,22 +240,17 @@ PlugAPI.getAuth({
 	}
 	
 	function buildAI()	{
+		
 		random_number_ai = require('./ai/randomnumber.js');
 		bad_command_ai = require('./ai/unknowncommand.js');
+		eightball_ai = require('./ai/8ball.js');
 		props_aliases = require('./ai/propsaliases.js');
+		roll_aliases = require('./ai/rollaliases.js');
+		eightball_aliases = require('./ai/eightballaliases.js');
+		
 	}
 	
 	function delayedMessage(message, delay)	{
-	
-	/*
-		function delayedMessage
-		@params:
-			message: string
-			delay: int
-		@returns void
-	*/
-	
-	// Thin wrapper function to save some typing since delayed messages are pretty common
 	
 		setTimeout( function() {bot.chat(message);}, delay * 1000);
 	
@@ -256,13 +258,6 @@ PlugAPI.getAuth({
 	
 	
 	function getRandomNumber(sides)	{
-	
-	/*
-		function getRandomNumber
-		@params:
-			sides: int
-		@returns string
-	*/
 	
 	// TODO:  This could be better implemented to include handling for multiple parameters to designate the number of random selections
 	// That said, I think that's something that could be put off indefinitely unless someone really has a hankering to implement.
@@ -277,40 +272,23 @@ PlugAPI.getAuth({
 	
 	function isStaff(user) {
 	
-	/*
-		function isStaff
-		@params:
-			user:  string
-		@returns bool
-	*/
-	
-	for (var key in staff)
-		if (key == user) return true;
+		for (var key in staff)
+			if (key == user) return true;
+			
+		return false;
 	
 	}
 	
 	function getSecurityValue(user) {
 	
-	/*
-		function getSecurityValue
-		@params:
-			user: string
-		@returns string
-	*/
-	
 		for (key in staff)
 			if (user == key) return staff[key].toString();
+		
+		return "0";
 	
 	}
 	
 	function decode_security(value)	{
-	
-	/*
-		function decode_security
-		@params:
-			value: int
-		@returns string
-	*/
 	
 		if ('4' == value) return "Host";
 		if ('3' == value) return "Manager";
@@ -321,31 +299,53 @@ PlugAPI.getAuth({
 	}
 	
 	function getCommandAlias(command)	{
-	
-	/*
-		function getCommandAlias
-		@params
-			command: string
-		@returns string
-	*/
-	
+		
 	var speak = new Array("speak","holla","talk","bark");
-	var roll = new Array("roll","dice","random");
 	
 	if (speak.indexOf(command) > -1) return "speak";
-	else if (roll.indexOf(command) > -1) return "roll";
+	else if (roll_aliases.indexOf(command) > -1) return "roll";
 	else if (props_aliases.indexOf(command) > -1) return "props";
+	else if (eightball_aliases.indexOf(command) > -1) return "8ball";
 	else return command;
 	
 	}
 	
 	function canUseCommand(command, userid)	{
 	
-		//  map alias to allowed users
+		//  map alias to allowed users - right now this function serves no purpose
 		console.log("Audience: " + JSON.stringify(bot.getAudience()));
 		console.log("DJs: " + JSON.stringify(bot.getDJs()));
 		console.log("Users: " + JSON.stringify(bot.getUsers()));
 		console.log("Staff: " + JSON.stringify(bot.getStaff()));
+	
+	}
+	
+	function eightBall(command, parameters, from, fromID)	{
+		
+		var ai_text = eightball_ai.phrase(command, parameters, from, fromID);
+		bot.chat(ai_text);
+		
+	}
+	
+	function getHelp(parameters)	{
+
+		if (parameters.length == 0)
+			bot.chat("The following commands are available:  woot, 8ball, roll.  Use " + COMMAND_PREFIX + "help <command> for aliases.");
+		else
+			{
+			var prefix = "You can use the following aliases for " + parameters[0] + ": "
+				switch (parameters[0])	{
+					case "woot":
+						bot.chat(prefix + props_aliases.toString());
+						break;
+					case "8ball":
+						bot.chat(prefix + eightball_aliases.toString());
+						break;
+					case "roll":
+						bot.chat(prefix + roll_aliases.toString());
+						break;
+			}
+		}
 	
 	}
 	
