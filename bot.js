@@ -6,7 +6,7 @@ var PlugAPI = require('./plugapi');
 var CONFIG = require('./config.js');
 
 var ROOM = CONFIG.room;
-var UPDATECODE = null;
+var UPDATECODE = "p9R*"; //
 var COMMAND_PREFIX = CONFIG.commandPrefix;
 
 
@@ -17,11 +17,14 @@ var eightball_ai = null;
 var props_aliases = null;
 var roll_aliases = null;
 var eightball_aliases;
+var marvins_aliases = ['marvin','marv','marvey','marvey-baby'];
+var ALLOWED_COMMANDS = ['8ball','roll','props'];
 
 var hasVoted = false;
 var currentDJ = null;
 var PlugRoom = null;
 var Suspend_Queue = null;
+var numUsers = 0;
 
 //  Do some fuckery with Twitter Auth strings to get the AuthCode AND the UPDATECODE.
 //  Note that if UPDATECODE is wrong, the bot will stop talking to the room.
@@ -37,7 +40,7 @@ PlugAPI.getAuth({
     
 	PlugAPI.getUpdateCode(auth, ROOM, function(error, updateCode) {
       if(error === false) {
-	  UPDATE_CODE = updateCode;
+	  UPDATECODE = updateCode;
       } else {
         console.log(error);
       }
@@ -45,6 +48,7 @@ PlugAPI.getAuth({
 
 	
 	// Set up the bot
+	UPDATECODE = "p9R*"; 	// Have to manually specify this for now due to plug changes.
 	var bot = new PlugAPI(auth, UPDATECODE);
 	var RECONNECT = function() {bot.connect(ROOM);};
 	buildAI();
@@ -72,13 +76,14 @@ PlugAPI.getAuth({
     bot.on('roomJoin', function(data) {
         // data object has information on the room - list of users, song currently playing, etc.
 		//console.log("Joined " + ROOM + ": ", data);
-		console.log("Joined " + ROOM);
-		console.log("There are currently " + data.room.population.toString() + " users in the room");
-		console.log("Autowoot is " + CONFIG.autoWoot.toString());
-		console.log("Self woot is " + CONFIG.selfProps.toString());
 		staff=data.room.staff;
 		currentDJ = data.room.currentDJ;
 		PlugRoom = data;
+		numUsers = data.room.population;
+		console.log("Joined " + ROOM + " with update code: " + UPDATECODE);
+		console.log("There are currently " + numUsers.toString() + " users in the room");
+		console.log("Autowoot is " + CONFIG.autoWoot.toString());
+		console.log("Self woot is " + CONFIG.selfProps.toString());
 		
 		for (var key in staff)
 			{
@@ -108,19 +113,18 @@ PlugAPI.getAuth({
         console.log(data.from+data.message)
     else
         console.log(data.from+"> "+data.message)
+		
+	var messageObject = parseIncomingMessage(data.message, data.from, data.fromID);
 	
-	
-	if ( isStaff(data.fromID) && (data.message.substring(0,COMMAND_PREFIX.length) == COMMAND_PREFIX) ) 
+	if (messageObject.valid)
 		{
-			var cmdline = data.message.substring(COMMAND_PREFIX.length);
-			var tokens = cmdline.split(" ");
-			var command = tokens[0];
-			var parameters = new Array();
-			for (var i=1; i < tokens.length; i++)
-				parameters.push(tokens[i]);
-				
+
+			var command = messageObject.command;
+			var parameters = messageObject.tokens;
+
+			console.log("command: " + command + " tokens: " + parameters.toString());
 			
-			switch (getCommandAlias(command))
+			switch (command)
 				{
 					case 'speak':
 						bot.chat('Doge says woof');
@@ -140,8 +144,7 @@ PlugAPI.getAuth({
 					case 'info':
 						if (data.fromID == '50aeaedd3e083e18fa2d01be')	{
 						
-							console.log("Roomscore: " + JSON.stringify(bot.getRoomScore()));
-							console.log("Waitlist: " + JSON.stringify(bot.getWaitList()));
+							console.log( (CONFIG.commandPrefix).toUpperCase());
 						
 						}
 					case 'reload':
@@ -173,6 +176,8 @@ PlugAPI.getAuth({
 	
 	if (data.username != 'Marvin-Uberbot')
 		delayedMessage("Greetings, " + (CONFIG.pingGreeting ? "@" : "") + data.username + ".  Welcome to the FunHouse!", 5);
+	numUsers++;
+	console.log("User: " + data.username + " joined the room.  Current user count: " + numUsers + ".");
 	
 	});
 	
@@ -196,8 +201,15 @@ PlugAPI.getAuth({
 	
 	bot.on('userUpdate', function(data)	{
 	
-	console.log("userUpdate: " + JSON.stringify(data));
-	console.log("getUser: " + JSON.stringify(bot.getUser(data.id)));
+		console.log("userUpdate: " + JSON.stringify(data));
+		console.log("getUser: " + JSON.stringify(bot.getUser(data.id)));
+	
+	});
+	
+	bot.on('userLeave', function(data)	{
+
+		numUsers--;
+		console.log("User: " + data.id + " left the room.  Current user count: " + numUsers + ".");
 	
 	});
 	
@@ -224,6 +236,8 @@ PlugAPI.getAuth({
 		console.log("Reloading config.js. Current refresh interval is: " + CONFIG.refreshDelay.toString() + " seconds.");
 		delete require.cache[require.resolve('./config.js')]
 		CONFIG = require('./config.js');
+		
+		COMMAND_PREFIX = CONFIG.commandPrefix;
 	}
 	
 	function refreshAI()	{
@@ -324,6 +338,53 @@ PlugAPI.getAuth({
 		
 		var ai_text = eightball_ai.phrase(command, parameters, from, fromID);
 		bot.chat(ai_text);
+		
+	}
+	
+	function parseIncomingMessage(message, from, fromID)	{
+
+		var cmd;
+		var tkns = new Array();
+		var possibleCommand = false;
+		var isCommand = false;
+		var returnVal;
+		var marvs_location = -1;
+
+		
+		message = message.replace(/[\.,-\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+		message = message.replace(/\s{2,}/g," ");
+		
+		var newmessage = message.split(" ");
+		
+		for (var aliases in marvins_aliases)	{
+		
+			marvslocation = message.toUpperCase().indexOf(marvins_aliases[aliases].toUpperCase());
+			
+			if (marvslocation > -1)
+				possibleCommand = true;
+			
+		}
+		
+		if (!possibleCommand) 
+			return returnVal = {valid : false, command : "", tokens : ""};
+		
+		
+		for (var word in newmessage)	{
+			
+			var resolved_alias = getCommandAlias(newmessage[word]);
+			
+			if (ALLOWED_COMMANDS.indexOf(resolved_alias) > -1)	{
+			
+				cmd = resolved_alias;
+				tkns = newmessage.slice(word + 1);
+				isCommand = true;
+				
+				return returnVal = {valid : isCommand, command : cmd, tokens : tkns};
+
+			}
+		}
+
+		return returnVal = {valid : true, command : newmessage[marvslocation+1], tokens : newmessage.slice(marvslocation+1) };
 		
 	}
 	

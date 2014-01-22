@@ -6,4 +6,4 @@ module.exports = 	["charleston","twostep","piroette","linedance","hoedown","move
 							"swing","rave","jiggle","lighter","limbo","freak","get_jiggy","jiggy","jig","getjiggy","jive","nice","squaredance","contradance","contra",
 							"dance!","get_your_freak_on","BECK!","sashay","gangnam","twirl","merengue","bachata","slamdance","jump","2-step",
 							"get_your_freak_on","slamdance","stomp","conga","waltz","hurrah","burlesque","moonwalk","hula","tap","bonus","swagger","crunk",
-							"funk","robot","mmmbop"];
+							"funk","robot","mmmbop","woot","awesome"];

@@ -2,12 +2,12 @@ module.exports = {
 	  twitter_username : 'xxxxxxx'
 	, twitter_password : 'xxxxxxx'
 	, selfProps : true
-	, commandPrefix : '!'
-	, botName: 'Marvin'
+	, commandPrefix : 'Marvin '
+	, botName: 'Marvin Uberbot'
 	, room : 'mixxx-s-fun-house-1'
-	, autoWoot : true
+	, autoWoot : false
 	, autoWootDelay : 10
 	, pingGreeting : true
-	, refreshDelay : 300
+	, refreshDelay : 120
 	, aiRefreshDelay : 300
 }

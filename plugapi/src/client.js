@@ -577,8 +577,8 @@
       return this.leaveBooth();
     };
 
-    PlugAPI.prototype.skipSong = function(callback) {
-      return this.sendRPC("moderate.skip", [], callback);
+    PlugAPI.prototype.skipSong = function(userid, callback) {
+      return this.sendRPC("moderate.skip", [userid, this.historyID], callback);
     };
 
     PlugAPI.prototype.moderateForceSkip = function() {

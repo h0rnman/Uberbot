@@ -16,9 +16,9 @@ To connect, do this!
 ```
 var PlugAPI = require('./plugapi'); // git clone (or unzip) into the same directory as your .js file. There should be plugapi/package.json, for example (and other files)
 var ROOM = 'chillout-mixer-ambient-triphop';
-//I've added a static method to try to obtain the update code from the javascript. It's obscured pretty well, so if Plug changes how it is stored and used, the getUpdateCode method will most likely break.
+//Plug changed the update code again, as well as how it is stored, which broke my static method which could be used to get it. So, for now, it must be hardcoded.
 
-Current update code: _:8s[H@*dnPe!nNerEM
+Current update code: p9R*
 
 // Instead of providing the AUTH, you can use this static method to get the AUTH cookie via twitter login credentials:
 PlugAPI.getAuth({
@@ -29,19 +29,28 @@ PlugAPI.getAuth({
 		console.log("An error occurred: " + err);
 		return;
 	}
-	PlugAPI.getUpdateCode(auth, ROOM, function(error, updateCode) {
-      if(error === false) {
-		var bot = new PlugAPI(auth, updateCode);
-		bot.connect(ROOM);
+	var bot = new PlugAPI(auth, 'p9R*');
+	bot.connect(ROOM);
 
-		bot.on('roomJoin', function(data) {
-			// data object has information on the room - list of users, song currently playing, etc.
-			console.log("Joined " + ROOM + ": ", data);
-		});
-	  } else {
-		console.log(error);
-	  }
+	bot.on('roomJoin', function(data) {
+		// data object has information on the room - list of users, song currently playing, etc.
+		console.log("Joined " + ROOM + ": ", data);
 	});
+	
+	// Plug made some more changes which makes the getUpdateCode method no longer work, so just ignore the below for now
+//	PlugAPI.getUpdateCode(auth, ROOM, function(error, updateCode) {
+//      if(error === false) {
+//		var bot = new PlugAPI(auth, updateCode);
+//		bot.connect(ROOM);
+//
+//		bot.on('roomJoin', function(data) {
+//			// data object has information on the room - list of users, song currently playing, etc.
+//			console.log("Joined " + ROOM + ": ", data);
+//		});
+//	  } else {
+//		console.log(error);
+//	  }
+//	});
 });
 
 
@@ -496,7 +505,10 @@ Moves a DJ to a new position in the waitlist.  Waitlist numbering beings with po
 ```
 bot.moveDJ('xxxxxxxxxxxxxxxxxxxxxxxx',4);
 ```
-#### skipSong: ([ callback:fn ])
+#### skipSong: (userid, [ callback:fn ])
+
+##### userid
+*<small>string (required)</small>* - The user id of the currently playing DJ.
 
 Skips the current song. You need to be DJ or have the permission to skip a song.
 
