@@ -73,8 +73,6 @@
 
       this.moderateRemoveDJ = __bind(this.moderateRemoveDJ, this);
 
-      this.moderatePermissions = __bind(this.moderatePermissions, this);
-      
       this.initRoom = __bind(this.initRoom, this);
 
       this.joinRoom = __bind(this.joinRoom, this);
@@ -88,8 +86,6 @@
       this.activatePlaylist = __bind(this.activatePlaylist, this);
 
       this.playlistMoveSong = __bind(this.playlistMoveSong, this);
-      
-      this.deleteChat = __bind(this.deleteChat, this);
 
       this.getDJHistory = __bind(this.getDJHistory, this);
       
@@ -153,20 +149,15 @@
           uri: url,
           method: 'GET'
         }, function(error, response, body) {
-          var m = /var [a-z]="([^"]+)",((?:[a-z]="[^"]+",?)+);return [a-z\+]/.exec(body);
+          var m = /var [a-z]=\"([^\"]+)\",[a-z]="([^"]+)",[a-z]="([^"]+)",[a-z]=[a-z]\+[a-z]\+[a-z];return [a-z]/.exec(body);
           if(m == null) {
-            console.log("Something went wrong, sorry.");
-          } else {
-            var updateCode = m[1];
-            var keyval = m[2].split(",");
-            // m[2] contains the rest of the code, in at least one key=value pair, so let's extract it with another regex
-            for(var i=0;i<keyval.length;i++) {
-              var n = /[a-z]="([^"]+)/.exec(keyval[i]);
-              updateCode += n[1];
-            }
             if(typeof callback == 'function')
-              callback(false, updateCode);
+              callback("Something went wrong, sorry.", false);
+            return;
           }
+          var updateCode = m[1] + m[2] + m[3];
+          if(typeof callback == 'function')
+            callback(false, updateCode);
         });
       });
     };
@@ -547,10 +538,6 @@
     PlugAPI.prototype.moderateRemoveDJ = function(userid) {
       return this.removeDj(userid);
     };
-    
-    PlugAPI.prototype.moderatePermissions = function(userid, permission, callback) {
-      return this.sendRPC("moderate.permissions", [userid, permission], callback);
-    };
 
     PlugAPI.prototype.moderateAddDJ = function(userid, callback) {
       return this.sendRPC("moderate.add_dj", userid, callback);
@@ -574,8 +561,8 @@
     	return this.sendRPC("moderate.move_dj", [id, index], callback);
     };
 
-    PlugAPI.prototype.moderateBanUser = function(id, reason, duration, callback) {
-      return this.sendRPC("moderate.ban", [id, reason, duration], callback);
+    PlugAPI.prototype.moderateBanUser = function(id, reason, callback) {
+      return this.sendRPC("moderate.ban", [id, reason], callback);
     };
     
     PlugAPI.prototype.moderateUnBanUser = function(id, callback) {
@@ -665,10 +652,6 @@
 
     PlugAPI.prototype.playlistMoveSong = function(playlist, song_id, position, callback) {
       return this.sendRPC("playlist.media.move", [playlist.id, playlist.items[position], [song_id]], callback);
-    };
-    
-    PlugAPI.prototype.deleteChat = function(chatID, callback) {
-      return this.sendRPC("moderate.chat_delete", [chatID], callback);
     };
 
     PlugAPI.prototype.getDJHistory = function(room, callback) {
