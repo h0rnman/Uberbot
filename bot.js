@@ -6,7 +6,7 @@ var PlugAPI = require('./plugapi');
 var CONFIG = require('./config.js');
 
 var ROOM = CONFIG.room;
-var UPDATECODE = "p9R*"; //
+var UPDATECODE = "4w@fWs$"; //
 var COMMAND_PREFIX = CONFIG.commandPrefix;
 
 
@@ -48,7 +48,7 @@ PlugAPI.getAuth({
 
 	
 	// Set up the bot
-	UPDATECODE = "p9R*"; 	// Have to manually specify this for now due to plug changes.
+	UPDATECODE = "4w@fWs$"; 	// Have to manually specify this for now due to plug changes.
 	var bot = new PlugAPI(auth, UPDATECODE);
 	var RECONNECT = function() {bot.connect(ROOM);};
 	buildAI();
