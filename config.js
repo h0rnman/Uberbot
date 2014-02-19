@@ -5,6 +5,7 @@ module.exports = {
 	, commandPrefix : 'Marvin '
 	, botName: 'Marvin Uberbot'
 	, room : 'mixxx-s-fun-house-1'
+	, greetWithWelcomeMessage : true
 	, autoWoot : false
 	, autoWootDelay : 10
 	, pingGreeting : true

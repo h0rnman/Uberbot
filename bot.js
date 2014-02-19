@@ -1,5 +1,7 @@
 // Node-specific requires and CONSTS:
 var fs = require('fs');
+var Entities = require('html-entities').XmlEntities;
+entities = new Entities();
 
 // Bot-specific requires and CONSTS:
 var PlugAPI = require('./plugapi');
@@ -48,7 +50,7 @@ PlugAPI.getAuth({
 
 	
 	// Set up the bot
-	UPDATECODE = "4w@fWs$"; 	// Have to manually specify this for now due to plug changes.
+	UPDATECODE = "4w@fWs$";	// Have to manually specify this for now due to plug changes.
 	var bot = new PlugAPI(auth, UPDATECODE);
 	var RECONNECT = function() {bot.connect(ROOM);};
 	buildAI();
@@ -75,7 +77,7 @@ PlugAPI.getAuth({
 	
     bot.on('roomJoin', function(data) {
         // data object has information on the room - list of users, song currently playing, etc.
-		//console.log("Joined " + ROOM + ": ", data);
+		console.log("Joined " + ROOM + ": ", data);
 		staff=data.room.staff;
 		currentDJ = data.room.currentDJ;
 		PlugRoom = data;
@@ -109,6 +111,9 @@ PlugAPI.getAuth({
 
 	
 	bot.on('chat', function(data) {
+	
+	if (data.from == 'Marvin-Uberbot') return;
+	
     if ('emote' == data.type)
         console.log(data.from+data.message)
     else
@@ -165,7 +170,7 @@ PlugAPI.getAuth({
 						break;
 					default:
 						var ai_text = bad_command_ai.phrase(command, parameters, data.from, data.fromID);
-						bot.chat(ai_text);
+						bot.chat(entities.decode(ai_text));
 						break;
 				};
 		}
@@ -173,9 +178,18 @@ PlugAPI.getAuth({
 	});
 	
 	bot.on('userJoin', function (data)	{
-	
-	if (data.username != 'Marvin-Uberbot')
-		delayedMessage("Greetings, " + (CONFIG.pingGreeting ? "@" : "") + data.username + ".  Welcome to the FunHouse!", 5);
+
+	if (data.username != 'Marvin-Uberbot')	{
+		
+		var greeting = "Greetings, " + (CONFIG.pingGreeting ? "@" : "") + data.username + ".";
+		
+		if (CONFIG.greetWithWelcomeMessage)
+			greeting += "  " + PlugRoom.room.description;
+		else
+			greeting += "  Welcome to the FunHouse!";
+		
+		delayedMessage(entities.decode(greeting), 5);
+	}
 	numUsers++;
 	console.log("User: " + data.username + " joined the room.  Current user count: " + numUsers + ".");
 	
@@ -186,7 +200,7 @@ PlugAPI.getAuth({
 		hasVoted = false;
 		if (data.currentDJ != undefined)	{
 			currentDJ = data.currentDJ;
-			bot.chat('/me ' + bot.getUser(data.currentDJ).username + " is now playing: " + data.media.title + " by " + data.media.author + ".");
+			bot.chat(entities.decode('/me ' + bot.getUser(data.currentDJ).username + " is now playing: " + data.media.title + " by " + data.media.author + "."));
 			console.log("Song: " + data.media.title + " by " + data.media.author);
 			console.log("Title: " + data.media.title + "   id: " + data.media.cid + " format_ID: " + data.media.id);
 			
@@ -337,7 +351,7 @@ PlugAPI.getAuth({
 	function eightBall(command, parameters, from, fromID)	{
 		
 		var ai_text = eightball_ai.phrase(command, parameters, from, fromID);
-		bot.chat(ai_text);
+		bot.chat(entities.decode(ai_text));
 		
 	}
 	
