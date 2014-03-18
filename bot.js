@@ -362,20 +362,22 @@ PlugAPI.getAuth({
 		var possibleCommand = false;
 		var isCommand = false;
 		var returnVal;
-		var marvs_location = -1;
 
 		
-		message = message.replace(/[\.,-\/#!$%\^&\*;:{}=\-_`~()?]/g,"");
+		message = message.replace(/[\.,\/#!$%\^&\*;:{}=_`~()?]/g,"");
 		message = message.replace(/\s{2,}/g," ");
 		
 		var newmessage = message.split(" ");
 		
 		for (var aliases in marvins_aliases)	{
 		
-			marvslocation = message.toUpperCase().indexOf(marvins_aliases[aliases].toUpperCase());
+			for (var i = 0; i < newmessage.length; i++)	{
 			
-			if (marvslocation > -1)
-				possibleCommand = true;
+				if (marvins_aliases[aliases].toUpperCase() == newmessage[i].toUpperCase())	{
+						possibleCommand = true;
+				}
+				
+			}
 			
 		}
 		
@@ -383,22 +385,19 @@ PlugAPI.getAuth({
 			return returnVal = {valid : false, command : "", tokens : ""};
 		
 		
-		for (var word in newmessage)	{
+		for (var word = 0; word < newmessage.length; word++)	{
 			
 			var resolved_alias = getCommandAlias(newmessage[word]);
 			
 			if (ALLOWED_COMMANDS.indexOf(resolved_alias) > -1)	{
-			
 				cmd = resolved_alias;
 				tkns = newmessage.slice(word + 1);
 				isCommand = true;
-				
-				return returnVal = {valid : isCommand, command : cmd, tokens : tkns};
 
 			}
 		}
 
-		return returnVal = {valid : true, command : newmessage[marvslocation+1], tokens : newmessage.slice(marvslocation+1) };
+		return returnVal = {valid : isCommand, command : cmd, tokens : tkns };
 		
 	}
 	
