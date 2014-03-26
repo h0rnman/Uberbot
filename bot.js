@@ -1,5 +1,13 @@
 // Node-specific requires and CONSTS:
 var fs = require('fs');
+
+
+//  Set up mail/SMS system
+var nodeMailer = require("nodemailer");
+var botMailer = nodeMailer.createTransport();
+var providers = require("./extras/SMS/providers.js");
+var SMSUsers = require("./extras/SMS/SMSUsers.js");
+
 var Entities = require('html-entities').XmlEntities;
 entities = new Entities();
 
@@ -8,7 +16,7 @@ var PlugAPI = require('./plugapi');
 var CONFIG = require('./config.js');
 
 var ROOM = CONFIG.room;
-var UPDATECODE = "4w@fWs$"; //
+var UPDATECODE = "h90"; //
 var COMMAND_PREFIX = CONFIG.commandPrefix;
 
 
@@ -20,7 +28,7 @@ var props_aliases = null;
 var roll_aliases = null;
 var eightball_aliases;
 var marvins_aliases = ['marvin','marv','marvey','marvey-baby'];
-var ALLOWED_COMMANDS = ['8ball','roll','props'];
+var ALLOWED_COMMANDS = ['8ball','roll','props','txtme'];
 
 var hasVoted = false;
 var currentDJ = null;
@@ -50,10 +58,12 @@ PlugAPI.getAuth({
 
 	
 	// Set up the bot
-	UPDATECODE = "4w@fWs$";	// Have to manually specify this for now due to plug changes.
+	UPDATECODE = "h90";	// Have to manually specify this for now due to plug changes.
 	var bot = new PlugAPI(auth, UPDATECODE);
 	var RECONNECT = function() {bot.connect(ROOM);};
 	buildAI();
+	
+	var botIdentity = CONFIG.botIdentity;
 	
 	bot.on('close', RECONNECT);
 	bot.on('error', RECONNECT);
@@ -164,6 +174,11 @@ PlugAPI.getAuth({
 						break;
 					case '8ball':
 						eightBall(command, parameters, data.from, data.fromID);
+						break;
+					case 'txtme':
+						console.log(bot.room.media.cid);
+						
+						
 						break;
 					case ' ':
 					case '':
@@ -420,6 +435,49 @@ PlugAPI.getAuth({
 						break;
 			}
 		}
+	
+	}
+	
+	function getSMSDestination(fromID)	{
+
+		for (var i = 0; i < SMSUsers.length; i++)	{
+			
+			if (SMSUsers[i].user_id == fromID)
+				return getSMSAddress(SMSUsers[i].provider).replace('%s',SMSUsers[i].number);
+				
+		}
+
+	}
+
+	function getSMSAddress(providername)	{
+
+		for (var i = 0; i < providers.length; i++)	{
+			if (providers[i].provider == providername)
+				return providers[i].address;
+		
+		}
+
+	}
+	
+	function sendSMS(recipient, message)	{
+	
+		var destination = getSMSDestination(recipient);
+		var SMSMessage = {
+			from: botIdentity,
+			to: destination,
+			text: message
+		}
+		
+		botmailer.sendMail(SMSMessage, function (error, response)	{
+		
+			console.log("Sending SMS: " + JSON.stringify(SMSMessage));
+			
+			if (error)	{
+				console.log(error);
+				return;
+			}
+		
+		});
 	
 	}
 	

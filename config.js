@@ -4,6 +4,7 @@ module.exports = {
 	, selfProps : true
 	, commandPrefix : 'Marvin '
 	, botName: 'Marvin Uberbot'
+	, botIdentity: 'Marvin.Uberbot@plug.dj'
 	, room : 'mixxx-s-fun-house-1'
 	, greetWithWelcomeMessage : true
 	, autoWoot : false
