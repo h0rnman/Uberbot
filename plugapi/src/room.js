@@ -44,6 +44,8 @@
       this.setOwner = __bind(this.setOwner, this);
 
       this.setAdmins = __bind(this.setAdmins, this);
+      
+      this.setAmbassadors = __bind(this.setAmbassadors, this);
 
       this.setStaff = __bind(this.setStaff, this);
 
@@ -59,6 +61,7 @@
       this.users = {};
       this.staffIds = {};
       this.adminIds = {};
+      this.ambassadorIds = {};
       this.ownerId = '';
       this.self = {};
       this.djs = {};
@@ -139,6 +142,10 @@
     Room.prototype.setAdmins = function(ids) {
       return this.adminIds = ids;
     };
+    
+    Room.prototype.setAmbassadors = function(ids) {
+      return this.ambassadorIds = ids;
+    }
 
     Room.prototype.setOwner = function(ownerId) {
       return this.ownerId = ownerId;
@@ -257,8 +264,8 @@
       _ref = this.users;
       for (id in _ref) {
         user = _ref[id];
-        if (user.ambassador) {
-          ambassdors.push(user);
+        if (id in this.ambassadorIds) {
+          ambassadors.push(user);
         }
       }
       return ambassadors;

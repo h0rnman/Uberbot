@@ -94,6 +94,8 @@
 
       this.playlistMoveSong = __bind(this.playlistMoveSong, this);
       
+      this.setAvatar == __bind(this.setAvatar, this);
+      
       this.deleteChat = __bind(this.deleteChat, this);
 
       this.getDJHistory = __bind(this.getDJHistory, this);
@@ -112,6 +114,10 @@
 
       this.updateCode = updateCode != undefined ? updateCode : '_:8s[H@*dnPe!nNerEM';
 
+      this.avatars = [
+        'tastycat02', 'monster02', 'animal13', 'animal12', 'animal11', 'warrior04', 'warrior03', 'warrior02', 'warrior01', 'animal14', 'space05', 'animal10', 'space04', 'space06', 'lucha06', 'lucha07', 'lucha04', 'lucha05', 'lucha02', 'lucha03', 'space03', 'lucha01', 'space01', 'monster04', 'lucha08', 'space02', 'monster05', 'revolvr', 'tastycat', 'animal08', 'animal09', 'monster01', 'monster03', 'animal01', 'animal02', 'animal03', 'animal04', 'animal05', 'animal06', 'animal07', 'su01', 'su02'
+      ];
+      
       if (!key) {
         throw new Error("You must pass the authentication cookie into the PlugAPI object to connect correctly");
       }
@@ -158,17 +164,27 @@
           uri: url,
           method: 'GET'
         }, function(error, response, body) {
-          var m = /var [a-z]="([^"]+)",((?:[a-z]="[^"]+",?)+);return [a-z\+]/.exec(body);
+          var m = /var ([a-z]="[^"]+"),((?:[a-z]="[^"]+",?)+);return ([a-z\+]+)/.exec(body);
           if(m == null) {
             console.log("Something went wrong, sorry.");
           } else {
-            var updateCode = m[1];
-            var keyval = m[2].split(",");
+						var pairs = {};
+						var n = /([a-z])="([^"]+)/.exec(m[1]);
+						pairs[n[1]] = n[2];
+
+						var keyval = m[2].split(",");
             // m[2] contains the rest of the code, in at least one key=value pair, so let's extract it with another regex
             for(var i=0;i<keyval.length;i++) {
-              var n = /[a-z]="([^"]+)/.exec(keyval[i]);
-              updateCode += n[1];
+              var n = /([a-z])="([^"]+)/.exec(keyval[i]);
+              pairs[n[1]] = n[2];
             }
+						
+						// m[3] contains the order the pairs should be assembled
+						var asm = m[3].split("+");
+						var updateCode = "";
+						for(var i=0;i<asm.length;i++) {
+							updateCode += pairs[asm[i]];
+						}
             if(typeof callback == 'function')
               callback(false, updateCode);
           }
@@ -195,7 +211,7 @@
         if (err) {
           console.error(err)
         }
-        
+				
         var sockId = body.split(':')[0];
         var sockUrl = 'wss://sio2.plug.dj/socket.io/1/websocket/' + sockId;
         _this.ws = new WebSocket(sockUrl);
@@ -211,7 +227,15 @@
 
         _this.ws.on('message', function(data, flags) {
           // log all data
-          
+          //console.log("message: ", data);
+					
+					// Invalid login
+					if (data == '0::') {
+						console.log("message: ", data);
+						_this.emit('invalidLogin')
+						return;
+					}
+					
           // heartbeat
           if (data == '2::') _this.ws.send('2::');
 
@@ -353,7 +377,28 @@
           this.emit('update_votes', msg.data);
           break;
         case 'djUpdate':
-          this.room.setDjs(msg.data.djs);
+					var addedDJs = []; // dj's that were added with this update
+					var removedDJs = []; // dj's that were removed with this update
+					var djs = this.room.djs;
+					this.room.setDjs(msg.data.djs);
+					var newdjs = this.room.djs;
+					
+					for (var id in newdjs) {
+						if (djs[id] === undefined) {
+							addedDJs.push(newdjs[id]);
+						}
+					}
+					for (var id in djs) {
+						if (newdjs[id] === undefined) {
+							removedDJs.push(djs[id]);
+						}
+					}
+					if (addedDJs.length > 0) {
+						this.emit('waitlist_add', addedDJs);
+					}
+					if (removedDJs.length > 0) {
+						this.emit('waitlist_remove', removedDJs);
+					}
           break;
         case 'djAdvance':
           this.room.setDjs(msg.data.djs);
@@ -439,8 +484,8 @@
     
     PlugAPI.prototype.joinRoom = function(name, callback) {
       var _this = this;
-      return this.sendRPC('room.join', [name, _this.updateCode], function(data) {
-        _this.actionRPC('room.details', [name], function(data) {
+      return this.sendRPC('room.join_1', [name, _this.updateCode], function(data) {
+        _this.actionRPC('room.details_1', [name], function(data) {
           return _this.initRoom(data, function(data) {
             _this.emit('roomJoin', data);
             if (typeof callback === 'function') {
@@ -448,56 +493,6 @@
             }
           });
         });
-        /*
-        var joindata = JSON.stringify({
-          service: 'room.details',
-          body: [name]
-        });
-        var post_options = {
-          host: 'plug.dj',
-          port: '80',
-          Cookie: 'usr=' + _this.key, 
-          path: '/_/gateway/room.details',
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Content-Length': joindata.length
-          }
-        };
-        
-        var post_req = http.request(post_options, function(res) {
-          var dataStr = '';
-          res.setEncoding('utf8');
-          res.on('data', function (chunk) {
-              dataStr += chunk
-          });
-          res.on('end', function() {
-            var data = JSON.parse(dataStr).body;
-//            console.log("ROOM DETAILS: ", data);
-            
-            return _this.initRoom(data, function(data) {
-              _this.emit('joinedRoom', data);
-              if (callback != null) {
-                return callback(data);
-              }
-            });
-          });
-        });
-        // post the data
-        post_req.write(joindata);
-        post_req.end();
-        */
-
-
-       
-//        return _this.sendRPC('room.details', [name], function(data) {
-//          console.log("ROOM DETAILS: ", data);
-//          return _this.initRoom(data, function() {
-//            if (callback != null) {
-//              return callback(data);
-//            }
-//          });
-//        });
       });
     };
 
@@ -508,6 +503,7 @@
       this.room.setUsers(data.room.users);
       this.room.setStaff(data.room.staff);
       this.room.setAdmins(data.room.admins);
+			this.room.setAmbassadors(data.room.ambassadors);
       this.room.setOwner(data.room.owner);
       this.room.setSelf(data.user.profile);
       this.room.setDjs(data.room.djs);
@@ -525,22 +521,22 @@
 //        type: 'chat',
 //        msg: msg
 //      });
-		var cid = uuid.v4().replace(/-/g,'').substr(0, 13)
+			var cid = uuid.v4().replace(/-/g,'').substr(0, 13);
 		  var message = {
-			  name: 'chat'
-			, args: [{
-				msg: msg
-			  , chatID: cid
-			}]
+			  name: 'chat',
+				args: [{
+					msg: msg,
+					chatID: cid
+				}]
 		  }
-		 return this.ws.send('5::/room:'+JSON.stringify(message))
+			return this.ws.send('5::/room:'+JSON.stringify(message))
     };
 
 	PlugAPI.prototype.chat = function(msg) {
 		if(msg.length > 235 && this.multiLine) {
 			var lines = msg.replace(/.{235}\S*\s+/g, "$&@").split(/\s+@/);
 			for(var i=0;i<lines.length;i++) {
-				var msg = lines[i];
+				msg = lines[i];
 				if(i > 0)
 					msg = "(continued) " + msg;
 				this.intChat(msg);
@@ -560,12 +556,12 @@
     };
 
     PlugAPI.prototype.upvote = function(callback) {
-      this.actionRPC("room.cast", [true, this.historyID, this.lastHistoryID === this.historyID], callback);
+      this.actionRPC("room.cast_1", [true, this.historyID, this.lastHistoryID === this.historyID], callback);
       return this.lastHistoryID = this.historyID;
     };
 
     PlugAPI.prototype.downvote = function(callback) {
-      this.actionRPC("room.cast", [false, this.historyID, this.lastHistoryID === this.historyID], callback);
+      this.actionRPC("room.cast_1", [false, this.historyID, this.lastHistoryID === this.historyID], callback);
       return this.lastHistoryID = this.historyID;
     };
 
@@ -591,7 +587,7 @@
         name: name,
         description: description
       };
-      return this.sendRPC("moderate.update", roomInfo, callback);
+      return this.sendRPC("moderate.update_1", roomInfo, callback);
     };
 
     PlugAPI.prototype.changeRoomOptions = function(boothLocked, waitListEnabled, maxPlays, maxDJs, callback) {
@@ -605,15 +601,15 @@
         maxPlays: maxPlays,
         maxDJs: maxDJs
       };
-      return this.sendRPC("room.update_options", [this.roomId, options], callback);
+      return this.sendRPC("room.update_options_1", [this.roomId, options], callback);
     };
 
     PlugAPI.prototype.joinBooth = function(callback) {
-      return this.actionRPC("booth.join", [], callback);
+      return this.actionRPC("booth.join_1", [], callback);
     };
 
     PlugAPI.prototype.leaveBooth = function(callback) {
-      return this.actionRPC("booth.leave", [], callback);
+      return this.actionRPC("booth.leave_1", [], callback);
     };
 	
     PlugAPI.prototype.lockBooth = function(arg1, arg2) {
@@ -627,7 +623,7 @@
           callback = arg2;
         }
       }
-        return this.actionRPC("room.lock_booth", [this.roomId, true, clear], callback);
+        return this.actionRPC("room.lock_booth_1", [this.roomId, true, clear], callback);
     }
 
     PlugAPI.prototype.unlockBooth = function(arg1, arg2) {
@@ -641,11 +637,11 @@
           callback = arg2;
         }
       }
-        return this.actionRPC("room.lock_booth", [this.roomId, false, clear], callback);
+        return this.actionRPC("room.lock_booth_1", [this.roomId, false, clear], callback);
     }
 
     PlugAPI.prototype.removeDj = function(userid, callback) {
-      return this.actionRPC("moderate.remove_dj", [userid], callback);
+      return this.actionRPC("moderate.remove_dj_1", [userid], callback);
     };
 
     PlugAPI.prototype.moderateRemoveDJ = function(userid) {
@@ -653,11 +649,11 @@
     };
     
     PlugAPI.prototype.moderatePermissions = function(userid, permission, callback) {
-      return this.actionRPC("moderate.permissions", [userid, permission], callback);
+      return this.actionRPC("moderate.permissions_1", [userid, permission], callback);
     };
 
     PlugAPI.prototype.moderateAddDJ = function(userid, callback) {
-      return this.actionRPC("moderate.add_dj", [userid], callback);
+      return this.actionRPC("moderate.add_dj_1", [userid], callback);
     };
 
     PlugAPI.prototype.addDj = function(callback) {
@@ -675,15 +671,15 @@
     PlugAPI.prototype.moveDJ = function(id, index, callback) {
     	if (index > 50) index = 50;
     	else if (index < 1) index = 1;
-    	return this.actionRPC("moderate.move_dj", [id, index], callback);
+    	return this.actionRPC("moderate.move_dj_1", [id, index], callback);
     };
 
     PlugAPI.prototype.moderateBanUser = function(id, reason, duration, callback) {
-      return this.actionRPC("moderate.ban", [id, reason, duration], callback);
+      return this.actionRPC("moderate.ban_1", [id, reason, duration], callback);
     };
     
     PlugAPI.prototype.moderateUnBanUser = function(id, callback) {
-      return this.actionRPC("moderate.unban", [id], callback);
+      return this.actionRPC("moderate.unban_1", [id], callback);
     };
 
     PlugAPI.prototype.waitListJoin = function() {
@@ -695,7 +691,7 @@
     };
 
     PlugAPI.prototype.skipSong = function(userid, callback) {
-      return this.actionRPC("moderate.skip", [userid, this.historyID], callback);
+      return this.actionRPC("moderate.skip_1", [userid, this.historyID], callback);
     };
 
     PlugAPI.prototype.moderateForceSkip = function() {
@@ -751,40 +747,44 @@
     };
 
     PlugAPI.prototype.createPlaylist = function(name, callback) {
-      return this.actionRPC("playlist.create", name, callback);
+      return this.actionRPC("playlist.create_1", name, callback);
     };
 
     PlugAPI.prototype.addSongToPlaylist = function(playlistId, songid, callback) {
-      return this.actionRPC("playlist.media.insert", [playlistId, null, -1, [songid]], callback);
+      return this.actionRPC("playlist.media.insert_1", [playlistId, null, -1, [songid]], callback);
     };
 
     PlugAPI.prototype.getPlaylists = function(callback) {
       var date = new Date(0).toISOString().replace('T', ' ');
-      return this.actionRPC("playlist.select", [date, null, 100, null], callback);
+      return this.actionRPC("playlist.select_1", [date, null, 100, null], callback);
     };
 
     PlugAPI.prototype.activatePlaylist = function(playlist_id, callback) {
-      return this.actionRPC("playlist.activate", [playlist_id], callback);
+      return this.actionRPC("playlist.activate_1", [playlist_id], callback);
     };
 
     PlugAPI.prototype.playlistMoveSong = function(playlist, song_id, position, callback) {
-      return this.actionRPC("playlist.media.move", [playlist.id, playlist.items[position], [song_id]], callback);
+      return this.actionRPC("playlist.media.move_1", [playlist.id, playlist.items[position], [song_id]], callback);
+    };
+    
+    PlugAPI.prototype.setAvatar = function(avatar, callback) {
+      return this.actionRPC("user.set_avatar_1", [avatar], callback);
     };
     
     PlugAPI.prototype.deleteChat = function(chatID, callback) {
-      return this.actionRPC("moderate.chat_delete", [chatID], callback);
+      return this.actionRPC("moderate.chat_delete_1", [chatID], callback);
     };
 
     PlugAPI.prototype.getDJHistory = function(room, callback) {
-      return this.actionRPC('history.select', room, callback);
+      return this.actionRPC('history.select_1', room, callback);
     };
 
     PlugAPI.prototype.fanUser = function(userid, callback) {
-      return this.actionRPC("user.follow", userid, callback);
+      return this.actionRPC("user.follow_1", userid, callback);
     };
 
     PlugAPI.prototype.unfanUser = function(userid, callback) {
-      return this.actionRPC("user.unfollow", userid, callback);
+      return this.actionRPC("user.unfollow_1", userid, callback);
     };
 	
     PlugAPI.prototype.listen = function (port, address) {

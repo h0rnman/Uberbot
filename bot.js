@@ -35,6 +35,7 @@ var currentDJ = null;
 var PlugRoom = null;
 var Suspend_Queue = null;
 var numUsers = 0;
+var currentSong = null;
 
 //  Do some fuckery with Twitter Auth strings to get the AuthCode AND the UPDATECODE.
 //  Note that if UPDATECODE is wrong, the bot will stop talking to the room.
@@ -92,6 +93,7 @@ PlugAPI.getAuth({
 		currentDJ = data.room.currentDJ;
 		PlugRoom = data;
 		numUsers = data.room.population;
+		currentSong = data.room.media;
 		console.log("Joined " + ROOM + " with update code: " + UPDATECODE);
 		console.log("There are currently " + numUsers.toString() + " users in the room");
 		console.log("Autowoot is " + CONFIG.autoWoot.toString());
@@ -176,8 +178,10 @@ PlugAPI.getAuth({
 						eightBall(command, parameters, data.from, data.fromID);
 						break;
 					case 'txtme':
-						console.log(bot.room.media.cid);
-						
+						var contents = currentSong.title + " by " + currentSong.author + "\n" + " at http://www.youtube.com/watch?v=" + currentSong.cid;
+						console.log(contents);
+						if (data.fromID == '50aeaedd3e083e18fa2d01be')
+							sendSMS(data.fromID, contents);
 						
 						break;
 					case ' ':
@@ -212,6 +216,7 @@ PlugAPI.getAuth({
 	
 	bot.on('djAdvance', function (data)	{
 	
+		currentSong = data.media;
 		hasVoted = false;
 		if (data.currentDJ != undefined)	{
 			currentDJ = data.currentDJ;
@@ -439,7 +444,6 @@ PlugAPI.getAuth({
 	}
 	
 	function getSMSDestination(fromID)	{
-
 		for (var i = 0; i < SMSUsers.length; i++)	{
 			
 			if (SMSUsers[i].user_id == fromID)
@@ -468,7 +472,7 @@ PlugAPI.getAuth({
 			text: message
 		}
 		
-		botmailer.sendMail(SMSMessage, function (error, response)	{
+		botMailer.sendMail(SMSMessage, function (error, response)	{
 		
 			console.log("Sending SMS: " + JSON.stringify(SMSMessage));
 			
